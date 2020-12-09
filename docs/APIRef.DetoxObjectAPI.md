@@ -10,6 +10,8 @@
 - [`detox.beforeEach()`](#detoxbeforeeach)
 - [`detox.afterEach()`](#detoxaftereach)
 - [`detox.cleanup()`](#detoxcleanup)
+- [`detox.traceCall()`](#detoxtracecall)
+- [`detox.trace.startSection(), detox.trace.endSection()`](#detoxtracestartsection,-detoxtraceendsection)
 
 ### `detox.init()`
 The setup phase happens inside `detox.init()`. This is the phase where detox reads its configuration, starts a server, loads its expection library and starts a simulator.
@@ -103,3 +105,46 @@ after(async () => {
   await detox.cleanup();
 });
 ```
+
+### `detox.traceCall()`
+
+Trace a subprocess of your test's runtime such that it would leave traces inside the [Timeline](APIRef.Artifacts.md#timeline-plugin) artifact, for a later inspection.
+
+Example:
+
+```js
+it('Verify sanity things', async () => {
+  // Instead of this typical direct call:
+  // await element(by.id('sanityButton')).tap()
+  
+  // Use traceCall() as a wrapper:
+  await detox.traceCall('Navigate to sanity', () =>
+    element(by.id('sanityButton')).tap());
+});
+```
+
+This would have the `tap` action traced to the final artifact, so it would look something like this:
+
+![User event](img/timeline-artifact-userEvent.png)
+
+At the bottom left, you can see what portion of the test was spent in handling the whole navigation process: tap + screen push + screen rendering.
+
+### `detox.trace.startSection(), detox.trace.endSection()`
+
+This is similar to the `traceCall()` API, except that it gives more control over when the section's start and ending are defined, so as to monitor a complete flow. For example:
+
+```js
+it('Verify sanity things', async () => {
+  try {
+    detox.trace.startSection('Turn off notifications');
+    await element(by.id('gotoNotifications')).tap();
+    await element(by.id('notificationsToggle')).tap();
+    await device.pressBack();    
+  } finally {
+    detox.trace.endSection('Turn off notifications');    
+  }
+});
+```
+
+Effectively, `start` and `end` can even be called in two complete different places - such as a `before` and an `after`. But that is discouraged. In fact, **usage of `detox.traceCall()` is the recommended way of tracing things, overall.**
+
